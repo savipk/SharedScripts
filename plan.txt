@@ -1,7 +1,0 @@
-standard for validation  - k-fold 
-nnet
-logistic
-svm
-xgboost
-decision tree/random forest/rpart
-
