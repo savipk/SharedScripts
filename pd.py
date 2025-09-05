@@ -1,35 +1,24 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 import re
 
-# Example dataframe
-data = {
-    "description": [
-        "desv"
-    ]
-}
-df = pd.DataFrame(data)
+# df is assumed to be provided and has a column "control_description"
 
-# Simplified regex patterns
+# Simplified regex patterns for the 5Ws
 patterns = {
-    "Who": r"[\[\(\s]*who[\]\)\s:]*",
-    "What": r"[\[\(\s]*what[\]\)\s:]*",
-    "When": r"[\[\(\s]*when[\]\)\s:]*",
+    "Who":   r"[\[\(\s]*who[\]\)\s:]*",
+    "What":  r"[\[\(\s]*what[\]\)\s:]*",
+    "When":  r"[\[\(\s]*when[\]\)\s:]*",
     "Where": r"[\[\(\s]*where[\]\)\s:]*",
-    "Why": r"[\[\(\s]*why[\]\)\s:]*"
+    "Why":   r"[\[\(\s]*why[\]\)\s:]*"
 }
 
-# Count occurrences
+# Count how many controls contain each W
 counts = {
     w: df["control_description"].str.contains(pat, flags=re.IGNORECASE, regex=True).sum()
     for w, pat in patterns.items()
 }
 
-# Convert to DataFrame for plotting
-counts_df = pd.DataFrame(list(counts.items()), columns=["W", "Count"])
+# Convert to DataFrame for display or plotting
+counts_df = pd.DataFrame(list(counts.items()), columns=["W", "Num_Controls"])
 
-# Plot
-counts_df.plot(kind="bar", x="W", y="Count", legend=False, rot=0)
-plt.title("Presence of 5Ws in Control Descriptions")
-plt.ylabel("Count")
-plt.show()
+print(counts_df)
