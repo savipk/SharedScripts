@@ -3,13 +3,13 @@ import re
 
 # df is assumed to be provided and has a column "control_description"
 
-# Simplified regex patterns for the 5Ws
+# Updated regex patterns
 patterns = {
-    "Who":   r"[\[\(\s]*who[\]\)\s:]*",
-    "What":  r"[\[\(\s]*what[\]\)\s:]*",
-    "When":  r"[\[\(\s]*when[\]\)\s:]*",
-    "Where": r"[\[\(\s]*where[\]\)\s:]*",
-    "Why":   r"[\[\(\s]*why[\]\)\s:]*"
+    "Who":   r"(?:\[\s*who\s*\]|\(\s*who\s*\)|who:)",
+    "What":  r"(?:\[\s*what\s*\]|\(\s*what\s*\)|what:)",
+    "When":  r"(?:\[\s*when\s*\]|\(\s*when\s*\)|when:)",
+    "Where": r"(?:\[\s*where\s*\]|\(\s*where\s*\)|where:)",
+    "Why":   r"(?:\[\s*why\s*\]|\(\s*why\s*\)|why:)"
 }
 
 # Count how many controls contain each W
