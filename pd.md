@@ -1,208 +1,226 @@
 
 
-## ✅ **Complete Unit Test Suite Created and Running**
-
-### **📊 Test Results**: 
-- **109 unit tests** all passing ✅
-- **0 failures** after fixes
-- **Fast execution** (~0.12s)
-
-### **🏗️ Test Coverage by Layer**
-
-#### **Domain Layer Tests** (Core Business Logic)
-- ✅ **Value Objects**: `FiveWsSet`, `Score`, `FiveWFinding`, `ThemeClassification`
-  - Validation rules and invariants
-  - Immutability enforcement
-  - Error handling for invalid states
-- ✅ **Entities**: `Control`, `Cluster`, `Taxonomy`, `RiskTheme` 
-  - Business rule validation
-  - Data integrity checks
-  - Relationship consistency
-- ✅ **Error Hierarchy**: `DomainError`, `ValidationError`, `DefinitionsNotLoadedError`
-  - Exception inheritance
-  - Error message preservation
-  - Polymorphic exception handling
-
-#### **Application Layer Tests** (Use Cases & Services)
-- ✅ **Use Cases**: Comprehensive edge case testing for:
-  - `map_control_to_themes()` and `ClassifyControlToThemes`
-  - `map_control_to_5ws()` and `ClassifyControlToFiveWs`
-  - Error scenarios, empty inputs, LLM failures
-  - Context passing and deployment handling
-- ✅ **Prompts**: Template building and edge cases
-  - Empty data handling
-  - Special characters and long inputs
-  - Injection safety
-- ✅ **Schemas**: Pydantic validation and dynamic model creation
-  - `build_taxonomy_models()` with various name lists
-  - `FiveWItem` and `FiveWOut` validation
-  - JSON serialization/deserialization
-- ✅ **Assemblers**: Data transformation accuracy
-  - `assemble_taxonomy_items()` with various inputs
-  - Score conversion and ordering preservation
-
-### **🎯 Test Quality Features**
-
-#### **Comprehensive Edge Cases**
-- Empty/null inputs
-- Very long strings (5000+ chars)
-- Special characters (émojis 🔒, unicode)
-- Boundary values (scores 0.0-1.0)
-- Invalid JSON from LLM
-- Missing definitions
-- Order validation vs uniqueness
-
-#### **Clean Architecture Compliance**
-- ✅ **Domain tests** are framework-free
-- ✅ **Application tests** use mocked dependencies
-- ✅ **No external service calls** in unit tests
-- ✅ **DI patterns** tested with fake implementations
-
-#### **Error Handling Validation**
-- ✅ Proper exception types raised
-- ✅ Error message validation
-- ✅ Error propagation through layers
-- ✅ Input validation boundaries
-
-### **📁 Final Test Structure**
-```
-tests/unit/
-├── test_domain_value_objects.py     (25 tests)
-├── test_domain_entities.py          (15 tests)  
-├── test_domain_errors.py            (12 tests)
-├── test_prompts.py                   (18 tests) [expanded]
-├── test_use_cases.py                 (29 tests) [expanded]
-├── test_application_schemas.py      (20 tests) [new]
-└── test_application_assemblers.py   (10 tests) [new]
-```
-
-### **🚀 Ready for CI/CD Integration**
-
-The test suite is now ready for:
-- **Local development**: `pytest tests/unit -q`
-- **CI pipeline**: `pytest tests/unit --cov=mapper_api --cov-fail-under=90`
-- **Pre-commit hooks**: Fast feedback loop
-- **Parallel execution**: `pytest -n auto tests/unit`
-
-### **📈 Best Practices Implemented**
-
-1. **Fast & Isolated**: All tests run in <1 second with no external dependencies
-2. **Deterministic**: No random elements or time dependencies  
-3. **Clear naming**: Descriptive test names explaining behavior
-4. **Arrange-Act-Assert**: Clean test structure throughout
-5. **Edge case focused**: Comprehensive boundary testing
-6. **Mock-driven**: Proper isolation using fakes and mocks
-7. **Coverage-ready**: Structured for code coverage analysis
-
-The comprehensive unit test suite ensures the Clean Architecture boundaries are respected, business rules are protected, and the system handles edge cases gracefully while maintaining fast feedback for developers.
-
-
-test_domain_errors.py
-
-"""Tests for domain errors and exceptions."""
-import pytest
-from mapper_api.domain.errors import DomainError, ValidationError, DefinitionsNotLoadedError
-
-
-class TestDomainError:
-    """Test base DomainError exception."""
+# Additional edge case tests for themes mapping
+class TestMapControlToThemesEdgeCases:
+    """Test edge cases and error handling for themes mapping."""
     
-    def test_is_exception(self):
-        assert issubclass(DomainError, Exception)
+    def test_empty_control_description_raises_validation_error(self):
+        with pytest.raises(ValidationError, match="controlDescription must not be empty"):
+            map_control_to_themes(
+                record_id='r1', 
+                control_description='', 
+                repo=FakeRepo(), 
+                llm=FakeLLM(), 
+                deployment='d'
+            )
     
-    def test_can_be_raised_with_message(self):
-        with pytest.raises(DomainError, match="test message"):
-            raise DomainError("test message")
+    def test_whitespace_only_control_description_raises_validation_error(self):
+        with pytest.raises(ValidationError, match="controlDescription must not be empty"):
+            map_control_to_themes(
+                record_id='r1', 
+                control_description='   \t\n  ', 
+                repo=FakeRepo(), 
+                llm=FakeLLM(), 
+                deployment='d'
+            )
     
-    def test_can_be_raised_without_message(self):
-        with pytest.raises(DomainError):
-            raise DomainError()
-    
-    def test_message_preservation(self):
-        error = DomainError("specific error message")
-        assert str(error) == "specific error message"
-
-
-class TestValidationError:
-    """Test ValidationError exception."""
-    
-    def test_inherits_from_domain_error(self):
-        assert issubclass(ValidationError, DomainError)
-        assert issubclass(ValidationError, Exception)
-    
-    def test_can_be_raised_with_message(self):
-        with pytest.raises(ValidationError, match="validation failed"):
-            raise ValidationError("validation failed")
-    
-    def test_message_preservation(self):
-        error = ValidationError("field X is invalid")
-        assert str(error) == "field X is invalid"
-    
-    def test_can_be_caught_as_domain_error(self):
-        try:
-            raise ValidationError("test")
-        except DomainError as e:
-            assert isinstance(e, ValidationError)
-            assert str(e) == "test"
-    
-    def test_can_be_caught_as_exception(self):
-        try:
-            raise ValidationError("test")
-        except Exception as e:
-            assert isinstance(e, ValidationError)
-            assert isinstance(e, DomainError)
-
-
-class TestDefinitionsNotLoadedError:
-    """Test DefinitionsNotLoadedError exception."""
-    
-    def test_inherits_from_domain_error(self):
-        assert issubclass(DefinitionsNotLoadedError, DomainError)
-        assert issubclass(DefinitionsNotLoadedError, Exception)
-    
-    def test_can_be_raised_with_message(self):
-        with pytest.raises(DefinitionsNotLoadedError, match="definitions not available"):
-            raise DefinitionsNotLoadedError("definitions not available")
-    
-    def test_message_preservation(self):
-        error = DefinitionsNotLoadedError("5Ws definitions missing")
-        assert str(error) == "5Ws definitions missing"
-    
-    def test_can_be_caught_as_domain_error(self):
-        try:
-            raise DefinitionsNotLoadedError("test")
-        except DomainError as e:
-            assert isinstance(e, DefinitionsNotLoadedError)
-            assert str(e) == "test"
-
-
-class TestErrorHierarchy:
-    """Test the error hierarchy and polymorphism."""
-    
-    def test_catch_all_domain_errors(self):
-        errors_to_test = [
-            ValidationError("validation error"),
-            DefinitionsNotLoadedError("definitions error"),
-            DomainError("base error")
-        ]
+    def test_empty_theme_rows_raises_definitions_not_loaded(self):
+        class EmptyRepo(DefinitionsRepository):
+            def get_theme_rows(self):
+                return []
+            def get_fivews_rows(self):
+                return []
         
-        for error in errors_to_test:
-            try:
-                raise error
-            except DomainError as caught:
-                assert isinstance(caught, DomainError)
-                # Verify the specific type is preserved
-                assert type(caught) == type(error)
+        with pytest.raises(DefinitionsNotLoadedError, match="taxonomy definitions not loaded"):
+            map_control_to_themes(
+                record_id='r1',
+                control_description='valid text',
+                repo=EmptyRepo(),
+                llm=FakeLLM(),
+                deployment='d'
+            )
     
-    def test_different_error_types_are_distinct(self):
-        validation_error = ValidationError("validation")
-        definitions_error = DefinitionsNotLoadedError("definitions")
+    def test_llm_invalid_json_raises_validation_error(self):
+        class BadLLM:
+            def json_schema_chat(self, **kwargs):
+                return "invalid json"
         
-        assert type(validation_error) != type(definitions_error)
-        assert isinstance(validation_error, ValidationError)
-        assert isinstance(definitions_error, DefinitionsNotLoadedError)
-        
-        # But both are domain errors
-        assert isinstance(validation_error, DomainError)
-        assert isinstance(definitions_error, DomainError)
+        with pytest.raises(ValidationError, match="LLM output validation failed"):
+            map_control_to_themes(
+                record_id='r1',
+                control_description='valid text',
+                repo=FakeRepo(),
+                llm=BadLLM(),
+                deployment='d'
+            )
+    
+    def test_long_control_description_handled(self):
+        long_text = "A" * 5000  # Very long control description
+        result = map_control_to_themes(
+            record_id='r1',
+            control_description=long_text,
+            repo=FakeRepo(),
+            llm=FakeLLM(),
+            deployment='d'
+        )
+        assert isinstance(result, list)
+        assert len(result) == 3  # Should still limit to top 3
 
+
+# Additional edge case tests for 5Ws mapping
+class TestMapControlToFiveWsEdgeCases:
+    """Test edge cases and error handling for 5Ws mapping."""
+    
+    def test_empty_control_description_raises_validation_error(self):
+        with pytest.raises(ValidationError, match="controlDescription must not be empty"):
+            map_control_to_5ws(
+                record_id='r1', 
+                control_description='', 
+                repo=FakeRepo(), 
+                llm=FakeLLM(), 
+                deployment='d'
+            )
+    
+    def test_whitespace_only_control_description_raises_validation_error(self):
+        with pytest.raises(ValidationError, match="controlDescription must not be empty"):
+            map_control_to_5ws(
+                record_id='r1', 
+                control_description='   \t\n  ', 
+                repo=FakeRepo(), 
+                llm=FakeLLM(), 
+                deployment='d'
+            )
+    
+    def test_empty_fivews_definitions_raises_error(self):
+        class EmptyRepo(DefinitionsRepository):
+            def get_theme_rows(self):
+                return []
+            def get_fivews_rows(self):
+                return []
+        
+        with pytest.raises(DefinitionsNotLoadedError, match="5Ws definitions not loaded"):
+            map_control_to_5ws(
+                record_id='r1',
+                control_description='valid text',
+                repo=EmptyRepo(),
+                llm=FakeLLM(),
+                deployment='d'
+            )
+    
+    def test_llm_invalid_json_raises_validation_error(self):
+        class BadLLM:
+            def json_schema_chat(self, **kwargs):
+                return "invalid json"
+        
+        with pytest.raises(ValidationError, match="LLM output validation failed"):
+            map_control_to_5ws(
+                record_id='r1',
+                control_description='valid text',
+                repo=FakeRepo(),
+                llm=BadLLM(),
+                deployment='d'
+            )
+    
+    def test_llm_missing_fivews_field_raises_validation_error(self):
+        class BadLLM:
+            def json_schema_chat(self, **kwargs):
+                return json.dumps({"wrong_field": []})
+        
+        with pytest.raises(ValidationError, match="LLM output validation failed"):
+            map_control_to_5ws(
+                record_id='r1',
+                control_description='valid text',
+                repo=FakeRepo(),
+                llm=BadLLM(),
+                deployment='d'
+            )
+    
+    def test_ordering_maintained_despite_llm_disorder(self):
+        class DisorderedLLM:
+            def json_schema_chat(self, **kwargs):
+                # Return 5Ws in wrong order
+                return json.dumps({
+                    'fivews': [
+                        {'name': 'why', 'status': 'present', 'reasoning': 'r'},
+                        {'name': 'where', 'status': 'present', 'reasoning': 'r'},
+                        {'name': 'who', 'status': 'present', 'reasoning': 'r'},
+                        {'name': 'when', 'status': 'missing', 'reasoning': 'r'},
+                        {'name': 'what', 'status': 'present', 'reasoning': 'r'},
+                    ]
+                })
+        
+        result = map_control_to_5ws(
+            record_id='r1',
+            control_description='valid text',
+            repo=FakeRepo(),
+            llm=DisorderedLLM(),
+            deployment='d'
+        )
+        
+        # Should be reordered correctly
+        names = [item['name'] for item in result]
+        assert names == ['who', 'what', 'when', 'where', 'why']
+    
+    def test_context_trace_id_passed_to_llm(self):
+        class TraceLLM:
+            def __init__(self):
+                self.last_context = None
+            
+            def json_schema_chat(self, **kwargs):
+                self.last_context = kwargs.get('context')
+                return json.dumps({
+                    'fivews': [
+                        {'name': 'who', 'status': 'present', 'reasoning': 'r'},
+                        {'name': 'what', 'status': 'present', 'reasoning': 'r'},
+                        {'name': 'when', 'status': 'missing', 'reasoning': 'r'},
+                        {'name': 'where', 'status': 'present', 'reasoning': 'r'},
+                        {'name': 'why', 'status': 'present', 'reasoning': 'r'},
+                    ]
+                })
+        
+        trace_llm = TraceLLM()
+        map_control_to_5ws(
+            record_id='test-trace-123',
+            control_description='valid text',
+            repo=FakeRepo(),
+            llm=trace_llm,
+            deployment='d'
+        )
+        
+        assert trace_llm.last_context == {"trace_id": "test-trace-123"}
+
+
+# Tests for the use case classes directly
+class TestClassifyControlToThemesClass:
+    """Test ClassifyControlToThemes class directly."""
+    
+    def test_from_defs_creates_instance(self):
+        use_case = ClassifyControlToThemes.from_defs(FakeRepo(), FakeLLM())
+        assert isinstance(use_case, ClassifyControlToThemes)
+        assert use_case.repo is not None
+        assert use_case.llm is not None
+    
+    def test_from_defs_with_empty_repo_raises_error(self):
+        class EmptyRepo(DefinitionsRepository):
+            def get_theme_rows(self):
+                return []
+            def get_fivews_rows(self):
+                return []
+        
+        with pytest.raises(DefinitionsNotLoadedError):
+            ClassifyControlToThemes.from_defs(EmptyRepo(), FakeLLM())
+
+
+class TestClassifyControlToFiveWsClass:
+    """Test ClassifyControlToFiveWs class directly."""
+    
+    def test_run_method_direct_call(self):
+        use_case = ClassifyControlToFiveWs(repo=FakeRepo(), llm=FakeLLM())
+        result = use_case.run(
+            record_id='direct-test',
+            control_description='test control',
+            deployment='test-deployment'
+        )
+        assert isinstance(result, list)
+        assert len(result) == 5
+        assert [item['name'] for item in result] == ['who', 'what', 'when', 'where', 'why']
